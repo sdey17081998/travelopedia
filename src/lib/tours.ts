@@ -483,6 +483,11 @@ export const DESTINATIONS: string[] = Array.from(
   new Set(TOURS.map((t) => t.destination)),
 ).sort();
 
+/** Real destination photo stored under public/images, keyed by slug. */
+export function tourImage(tour: Pick<Tour, "slug">): string {
+  return `/images/${tour.slug}.jpg`;
+}
+
 export function getTour(slug: string): Tour | undefined {
   return TOURS.find((t) => t.slug === slug);
 }

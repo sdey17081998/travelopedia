@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import SiteNav from "@/components/SiteNav";
 import TourCard from "@/components/TourCard";
@@ -12,6 +13,7 @@ import {
   CATEGORY_EMOJI,
   DESTINATIONS,
   getFeaturedTours,
+  tourImage,
   TOURS,
 } from "@/lib/tours";
 
@@ -151,17 +153,29 @@ export default function Home() {
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
             Popular destinations
           </h2>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {TOURS.map((tour, i) => (
               <Reveal key={tour.slug} direction="up" delayMs={i * 40}>
                 <Link
                   href={`/tours/${tour.slug}`}
-                  className={`lift card-sheen flex items-center gap-4 overflow-hidden rounded-2xl border border-zinc-200/70 bg-gradient-to-r ${tour.gradient} p-4 text-white shadow-md`}
+                  className="lift group relative flex h-40 items-end overflow-hidden rounded-2xl border border-zinc-200/70 text-white shadow-md"
                 >
-                  <span className="text-4xl">{tour.emoji}</span>
-                  <div>
-                    <p className="font-bold">{tour.destination}</p>
-                    <p className="text-sm text-white/85">{tour.state}</p>
+                  <Image
+                    src={tourImage(tour)}
+                    alt={`${tour.destination}, ${tour.state}`}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    className="object-cover transition-transform duration-500 group-hover:scale-110"
+                  />
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                  <div className="relative z-10 flex items-center gap-3 p-4">
+                    <span className="text-3xl drop-shadow">{tour.emoji}</span>
+                    <div>
+                      <p className="font-bold drop-shadow">{tour.destination}</p>
+                      <p className="text-sm text-white/90 drop-shadow">
+                        {tour.state}
+                      </p>
+                    </div>
                   </div>
                 </Link>
               </Reveal>

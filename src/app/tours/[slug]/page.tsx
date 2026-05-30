@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { notFound, useParams } from "next/navigation";
 import SiteNav from "@/components/SiteNav";
 import Reveal from "@/components/Reveal";
@@ -10,6 +11,7 @@ import {
   CATEGORY_EMOJI,
   formatPrice,
   getTour,
+  tourImage,
   TOURS,
   type Tour,
 } from "@/lib/tours";
@@ -55,12 +57,28 @@ export default function TourDetailPage() {
 
         {/* Banner */}
         <div
-          className={`card-sheen relative flex h-56 items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-br ${tour.gradient} sm:h-72`}
+          className={`card-sheen relative flex h-56 items-end overflow-hidden rounded-3xl bg-gradient-to-br ${tour.gradient} sm:h-80`}
         >
-          <span className="text-8xl drop-shadow-xl">{tour.emoji}</span>
-          <span className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full bg-black/30 px-3 py-1 text-sm font-semibold text-white backdrop-blur">
+          <Image
+            src={tourImage(tour)}
+            alt={`${tour.destination}, ${tour.state}`}
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover"
+          />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent" />
+          <span className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full bg-black/40 px-3 py-1 text-sm font-semibold text-white backdrop-blur">
             {CATEGORY_EMOJI[tour.category]} {tour.category}
           </span>
+          <div className="relative z-10 p-5 text-white sm:p-7">
+            <p className="text-sm font-medium drop-shadow">
+              📍 {tour.destination}, {tour.state}
+            </p>
+            <h2 className="text-2xl font-extrabold tracking-tight drop-shadow sm:text-3xl">
+              {tour.title}
+            </h2>
+          </div>
         </div>
 
         <div className="mt-6 grid gap-8 lg:grid-cols-[1fr_340px]">

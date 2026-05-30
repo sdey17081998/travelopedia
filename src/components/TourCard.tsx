@@ -2,7 +2,8 @@
 
 import React from "react";
 import Link from "next/link";
-import { CATEGORY_EMOJI, formatPrice, type Tour } from "@/lib/tours";
+import Image from "next/image";
+import { CATEGORY_EMOJI, formatPrice, tourImage, type Tour } from "@/lib/tours";
 import TiltCard from "@/components/TiltCard";
 
 export default function TourCard({ tour }: { tour: Tour }) {
@@ -10,10 +11,17 @@ export default function TourCard({ tour }: { tour: Tour }) {
     <TiltCard className="card-sheen spotlight group h-full overflow-hidden rounded-2xl border border-zinc-200/70 bg-white/70 backdrop-blur hover:shadow-2xl hover:shadow-indigo-500/10 dark:border-zinc-800/70 dark:bg-black/20">
       <Link href={`/tours/${tour.slug}`} className="flex h-full flex-col">
         <div
-          className={`relative flex h-40 items-center justify-center bg-gradient-to-br ${tour.gradient}`}
+          className={`relative flex h-44 items-center justify-center overflow-hidden bg-gradient-to-br ${tour.gradient}`}
         >
-          <span className="text-6xl drop-shadow-lg">{tour.emoji}</span>
-          <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-black/30 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur">
+          <Image
+            src={tourImage(tour)}
+            alt={`${tour.destination}, ${tour.state}`}
+            fill
+            sizes="(max-width: 768px) 100vw, 33vw"
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+          <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-black/40 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur">
             {CATEGORY_EMOJI[tour.category]} {tour.category}
           </span>
           <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-xs font-bold text-amber-600 shadow">

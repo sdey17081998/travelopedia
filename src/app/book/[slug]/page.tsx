@@ -3,8 +3,13 @@
 import React from "react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
+import { QRCodeSVG } from "qrcode.react";
 import SiteNav from "@/components/SiteNav";
 import { formatPrice, getTour, type Tour } from "@/lib/tours";
+
+/** Demo merchant UPI handle — no real money is collected. */
+const MERCHANT_UPI = "travelopedia@okaxis";
+const MERCHANT_NAME = "Travelopedia";
 
 type AddOns = {
   insurance: boolean;
@@ -18,7 +23,13 @@ const ADD_ON_PRICES = {
   airportTransfer: 900,
 };
 
-const STEPS = ["Trip details", "Traveler info", "Review", "Confirmed"] as const;
+const STEPS = [
+  "Trip details",
+  "Traveler info",
+  "Review",
+  "Payment",
+  "Confirmed",
+] as const;
 
 function todayPlus(days: number): string {
   const d = new Date();
@@ -48,6 +59,8 @@ export default function BookingPage() {
   const [notes, setNotes] = React.useState("");
   const [reference] = React.useState(makeReference);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
+  const [upiApp, setUpiApp] = React.useState("GPay");
+  const [copied, setCopied] = React.useState(false);
 
   if (!tour) {
     notFound();
@@ -60,6 +73,21 @@ export default function BookingPage() {
 
   const baseTotal = tour.price * travelers;
   const total = baseTotal + addOnsTotal * travelers;
+
+  // UPI deep link encoded into the QR — scannable by any UPI app.
+  const upiUri =
+    `upi://pay?pa=${encodeURIComponent(MERCHANT_UPI)}` +
+    `&pn=${encodeURIComponent(MERCHANT_NAME)}` +
+    `&am=${total}&cu=INR` +
+    `&tn=${encodeURIComponent(`Travelopedia ${reference}`)}`;
+
+  const copyUpi = () => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(MERCHANT_UPI).catch(() => {});
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
 
   const validateTravelerInfo = () => {
     const next: Record<string, string> = {};
@@ -339,6 +367,79 @@ export default function BookingPage() {
             )}
 
             {step === 3 && (
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">Payment</h1>
+                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                  Pay securely with UPI. Scan the QR or use the UPI ID below.
+                </p>
+
+                <div className="mt-6 grid gap-6 sm:grid-cols-[auto_1fr] sm:items-center">
+                  {/* QR code */}
+                  <div className="mx-auto rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700">
+                    <QRCodeSVG
+                      value={upiUri}
+                      size={188}
+                      level="M"
+                      marginSize={1}
+                    />
+                    <p className="mt-2 text-center text-xs font-medium text-zinc-500">
+                      Scan to pay {formatPrice(total)}
+                    </p>
+                  </div>
+
+                  {/* UPI details */}
+                  <div>
+                    <p className="text-sm font-semibold">Pay to UPI ID</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <code className="flex-1 rounded-xl border border-zinc-200 bg-white/70 px-3 py-2 text-sm font-semibold dark:border-zinc-700 dark:bg-black/30">
+                        {MERCHANT_UPI}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={copyUpi}
+                        className="rounded-xl border border-indigo-500/40 px-3 py-2 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-50 dark:text-cyan-400 dark:hover:bg-white/5"
+                      >
+                        {copied ? "Copied!" : "Copy"}
+                      </button>
+                    </div>
+
+                    <p className="mt-4 text-sm font-semibold">Pay using</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {["GPay", "PhonePe", "Paytm", "BHIM"].map((app) => (
+                        <button
+                          key={app}
+                          type="button"
+                          onClick={() => setUpiApp(app)}
+                          className={
+                            "rounded-full border px-3 py-1.5 text-sm font-medium transition " +
+                            (upiApp === app
+                              ? "border-transparent bg-gradient-to-r from-indigo-500 to-cyan-500 text-white shadow"
+                              : "border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-white/5")
+                          }
+                        >
+                          {app}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="mt-4 flex items-center justify-between rounded-xl border border-zinc-200 bg-white/60 px-4 py-3 text-sm dark:border-zinc-700 dark:bg-black/20">
+                      <span className="text-zinc-500 dark:text-zinc-400">
+                        Amount payable
+                      </span>
+                      <span className="text-lg font-extrabold text-gradient-animated">
+                        {formatPrice(total)}
+                      </span>
+                    </div>
+                    <p className="mt-3 text-xs text-zinc-400">
+                      Demo only — no real payment is processed. Reference{" "}
+                      {reference}.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {step === 4 && (
               <div className="text-center">
                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 text-3xl text-white shadow-lg">
                   ✓
@@ -348,8 +449,9 @@ export default function BookingPage() {
                 </h1>
                 <p className="mt-2 text-zinc-600 dark:text-zinc-300">
                   Thanks {name.split(" ")[0] || "traveler"} — your{" "}
-                  {tour.title} adventure is reserved. A confirmation has been
-                  sent to{" "}
+                  {tour.title} adventure is reserved and your UPI payment of{" "}
+                  <span className="font-semibold">{formatPrice(total)}</span> is
+                  received. A confirmation has been sent to{" "}
                   <span className="font-semibold">{email}</span>.
                 </p>
                 <div className="mx-auto mt-5 inline-block rounded-2xl border border-zinc-200/70 bg-white/70 px-6 py-4 dark:border-zinc-800/70 dark:bg-black/20">
@@ -378,7 +480,7 @@ export default function BookingPage() {
             )}
 
             {/* Navigation buttons */}
-            {step < 3 && (
+            {step < 4 && (
               <div className="mt-8 flex items-center justify-between">
                 <button
                   type="button"
@@ -393,7 +495,11 @@ export default function BookingPage() {
                   onClick={goNext}
                   className="lift rounded-full bg-gradient-to-r from-indigo-500 to-cyan-500 px-6 py-2.5 text-sm font-semibold text-white shadow-md hover:shadow-lg"
                 >
-                  {step === 2 ? "Confirm booking" : "Continue"}
+                  {step === 2
+                    ? "Proceed to payment"
+                    : step === 3
+                      ? `Pay ${formatPrice(total)} via ${upiApp}`
+                      : "Continue"}
                 </button>
               </div>
             )}
