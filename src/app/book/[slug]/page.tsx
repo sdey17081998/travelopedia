@@ -61,6 +61,9 @@ export default function BookingPage() {
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [upiApp, setUpiApp] = React.useState("GPay");
   const [copied, setCopied] = React.useState(false);
+  const [bookingId, setBookingId] = React.useState<string | null>(null);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState("");
 
   if (!tour) {
     notFound();
@@ -73,6 +76,12 @@ export default function BookingPage() {
 
   const baseTotal = tour.price * travelers;
   const total = baseTotal + addOnsTotal * travelers;
+
+  const selectedAddOns = [
+    addOns.insurance && "Travel insurance",
+    addOns.privateGuide && "Private guide",
+    addOns.airportTransfer && "Airport transfer",
+  ].filter(Boolean) as string[];
 
   // UPI deep link encoded into the QR — scannable by any UPI app.
   const upiUri =
@@ -100,8 +109,80 @@ export default function BookingPage() {
     return Object.keys(next).length === 0;
   };
 
-  const goNext = () => {
+  const saveBooking = async (): Promise<string> => {
+    const res = await fetch("/api/bookings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reference,
+        tourSlug: tour.slug,
+        tourTitle: tour.title,
+        destination: tour.destination,
+        state: tour.state,
+        departure: date,
+        travelers,
+        addOns: selectedAddOns,
+        baseTotal,
+        addOnsTotal: addOnsTotal * travelers,
+        total,
+        name,
+        email,
+        phone,
+        notes,
+      }),
+    });
+    if (!res.ok) throw new Error("Failed to save booking");
+    const data = (await res.json()) as { id: string };
+    return data.id;
+  };
+
+  const saveTransaction = async (id: string): Promise<void> => {
+    const res = await fetch("/api/transactions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        bookingId: id,
+        reference,
+        amount: total,
+        upiId: MERCHANT_UPI,
+        upiApp,
+        status: "success",
+      }),
+    });
+    if (!res.ok) throw new Error("Failed to record transaction");
+  };
+
+  const goNext = async () => {
     if (step === 1 && !validateTravelerInfo()) return;
+    setSubmitError("");
+
+    // Persist the booking when proceeding to payment.
+    if (step === 2 && !bookingId) {
+      setSubmitting(true);
+      try {
+        const id = await saveBooking();
+        setBookingId(id);
+      } catch {
+        setSubmitting(false);
+        setSubmitError("Couldn't save your booking. Please try again.");
+        return;
+      }
+      setSubmitting(false);
+    }
+
+    // Log the UPI transaction when paying.
+    if (step === 3) {
+      setSubmitting(true);
+      try {
+        if (bookingId) await saveTransaction(bookingId);
+      } catch {
+        setSubmitting(false);
+        setSubmitError("Payment could not be recorded. Please try again.");
+        return;
+      }
+      setSubmitting(false);
+    }
+
     setStep((s) => Math.min(s + 1, STEPS.length - 1));
     if (typeof window !== "undefined") window.scrollTo({ top: 0 });
   };
@@ -480,6 +561,11 @@ export default function BookingPage() {
             )}
 
             {/* Navigation buttons */}
+            {step < 4 && submitError && (
+              <p className="mt-6 rounded-xl border border-red-300 bg-red-50 px-4 py-2 text-sm font-medium text-red-600 dark:border-red-500/40 dark:bg-red-500/10">
+                {submitError}
+              </p>
+            )}
             {step < 4 && (
               <div className="mt-8 flex items-center justify-between">
                 <button
@@ -493,13 +579,16 @@ export default function BookingPage() {
                 <button
                   type="button"
                   onClick={goNext}
-                  className="lift rounded-full bg-gradient-to-r from-indigo-500 to-cyan-500 px-6 py-2.5 text-sm font-semibold text-white shadow-md hover:shadow-lg"
+                  disabled={submitting}
+                  className="lift rounded-full bg-gradient-to-r from-indigo-500 to-cyan-500 px-6 py-2.5 text-sm font-semibold text-white shadow-md hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {step === 2
-                    ? "Proceed to payment"
-                    : step === 3
-                      ? `Pay ${formatPrice(total)} via ${upiApp}`
-                      : "Continue"}
+                  {submitting
+                    ? "Processing…"
+                    : step === 2
+                      ? "Proceed to payment"
+                      : step === 3
+                        ? `Pay ${formatPrice(total)} via ${upiApp}`
+                        : "Continue"}
                 </button>
               </div>
             )}

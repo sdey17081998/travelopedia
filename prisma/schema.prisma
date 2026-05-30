@@ -1,0 +1,47 @@
+// Prisma schema for Travelopedia — logs bookings and payment transactions.
+// SQLite (file-based) for the local/demo app.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Booking {
+  id          String        @id @default(cuid())
+  reference   String        @unique
+  tourSlug    String
+  tourTitle   String
+  destination String
+  state       String
+  departure   String
+  travelers   Int
+  addOns      String // comma-separated list of selected add-ons
+  baseTotal   Int
+  addOnsTotal Int
+  total       Int // amount in INR (rupees)
+  currency    String        @default("INR")
+  name        String
+  email       String
+  phone       String
+  notes       String        @default("")
+  status      String        @default("pending") // pending | confirmed
+  createdAt   DateTime      @default(now())
+  transactions Transaction[]
+}
+
+model Transaction {
+  id        String   @id @default(cuid())
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+  reference String
+  amount    Int // amount in INR (rupees)
+  currency  String   @default("INR")
+  method    String   @default("UPI")
+  upiId     String
+  upiApp    String
+  status    String   @default("success") // success | failed | pending
+  createdAt DateTime @default(now())
+}
